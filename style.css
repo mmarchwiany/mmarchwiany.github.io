@@ -116,9 +116,12 @@ body {
 
 .container{
   max-width: 768px;
-  margin: auto;
+  margin: 0 auto 3rem;
 }
 
-@media(min-width:768px) {
-  
+a:link, a:visited {
+    color: blue;
+}
+a:hover {
+    color: red;
 }
