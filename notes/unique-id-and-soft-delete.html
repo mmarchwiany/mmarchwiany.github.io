@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Marcin Marchwiany - Dev Notes</title>
+
+    <link href="https://fonts.googleapis.com/css?family=Lato" rel="stylesheet">
+    <link rel="stylesheet" href="/style.css">
+</head>
+
+<body>
+    <div class="container">
+        <div class="box">
+            <h3>Marcin Marchwiany </h3>
+            <h1>Dev Notes</h1>
+
+            <h2>Unique ID and soft delete.</h2>
+            <h4>2020-03-21</h4>
+        
+            <p>
+                Let's imagine that we have a table in the database containing organizations. We would like each organization to be uniquely identified by its code. Of course, we want this table to contain no duplicate organizations.
+            </p>
+            <p>
+                Sample SQL code creating such a table could look like this:
+                <pre>
+CREATE TABLE `organizations` (
+    `id` INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,
+    `name` VARCHAR(255) NOT NULL,
+    `code` VARCHAR(8) NOT NULL,
+    `created_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE INDEX `UK_organizations_code` (`code`)
+);</pre>
+            </p>
+            <p>
+                Let's assume that we want to add to our table a soft delete mechanism. In order to do that, we create an additional column called `deleted_at` in which we will store the date and time when the record was deleted.
+            </p>
+            <p>
+                Our code will look like this:
+                <pre>
+CREATE TABLE `organizations` (
+    `id` INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,
+    `name` VARCHAR(255) NOT NULL,
+    `code` VARCHAR(8) NOT NULL,
+    `created_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+    `deleted_at` TIMESTAMP NULL DEFAULT NULL,
+    PRIMARY KEY (`id`),
+    UNIQUE INDEX `UK_organizations_code` (`code`)
+);</pre>
+            </p>
+            <p>
+                It seems that this solution is correct. But imagine a situation in which our table contains organization identified by code 'ORG1'. At some point, it is removed from the database. So in the column `deleted_at` in the record we put the current timestamp. However, it turns out that after some time you need to add the organization that has the same code as the deleted record. If we created a unique index on the 'code' column (as in the example) then of course trying to add such an organization will result in an error because we will have a duplicate value for the column with the unique index.
+            </p>
+            <p>
+                So how to solve this problem? Note that we are interested in the uniqueness of organizations that are not removed. So let’s try slightly different way define a unique index for our table:
+<pre>
+CREATE TABLE `organizations` (
+    `id` INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,
+    `name` VARCHAR(255) NOT NULL,
+    `code` VARCHAR(8) NOT NULL,
+    `created_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+    `deleted_at` TIMESTAMP NULL DEFAULT NULL,
+    PRIMARY KEY (`id`),
+    UNIQUE INDEX `UK_organizations_code` (`code`, `deleted_at`)
+);</pre>
+            </p>
+            <p>
+                This way, if we have a record that is not deleted in the deleted_at column, it will contain NULL. We will not be able to add another active organization with the same code because we have led to the situation in which we will try to add another pair with the same code and NULL value in the deleted_at column (['ORG1', NULL]). However, if the organization with code 'ORG1' was previously removed the unique index for this record would look like this ['ORG1', '2020-03-20 21:20:41']. This would allow us to add the organization with the code 'ORG1' once again (['ORG1', NULL]).
+            </p>
+        </div>
+        <a href="/notes.html">back</a>
+    </div>
+    
+    </main>
+</body>
+
+<script>
+    (function (i, s, o, g, r, a, m) {
+        i['GoogleAnalyticsObject'] = r;
+        i[r] = i[r] || function () {
+            (i[r].q = i[r].q || []).push(arguments)
+        }, i[r].l = 1 * new Date();
+        a = s.createElement(o),
+            m = s.getElementsByTagName(o)[0];
+        a.async = 1;
+        a.src = g;
+        m.parentNode.insertBefore(a, m)
+    })(window, document, 'script', '//www.google-analytics.com/analytics.js', 'ga');
+
+    ga('create', 'UA-38453367-2', 'auto');
+    ga('send', 'pageview');
+</script>
+
+</html>
