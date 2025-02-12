@@ -1,30 +1,24 @@
 <!DOCTYPE html>
 <html lang="en">
-
-<head>
+  <head>
     <meta charset="UTF-8">
-
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <title>Marcin Marchwiany - Dev Notes</title>
-
     <link href="https://fonts.googleapis.com/css?family=Lato" rel="stylesheet">
     <link rel="stylesheet" href="/style.css">
-</head>
-
-<body>
+  </head>
+  <body>
     <div class="container">
-        <div class="box">
-            <h3>Marcin Marchwiany </h3>
-            <h1>Dev Notes</h1>
-
-            <h2>Unique ID and soft delete.</h2>
-            <h4>2020-03-21</h4>
-        
-            <p>Let's consider a database table that stores organizations. Each organization should be uniquely identified by a <code>code</code>, and we want to ensure that no duplicate organizations exist.</p>
-    
-    <h2>Initial Table Structure</h2>
-    <p>A standard way to enforce uniqueness is by creating a unique index on the <code>code</code> column:</p>
-    <pre><code>CREATE TABLE `organizations` (
+      <div class="box">
+        <h3>Marcin Marchwiany </h3>
+        <h1>Dev Notes</h1>
+        <h2>Unique ID and soft delete. </h4>
+          <h4>2020-03-21</h4>
+          <p>Let's consider a database table that stores organizations. Each organization should be uniquely identified by a <code>code</code>, and we want to ensure that no duplicate organizations exist. </p>
+          <h4>Initial Table Structure</h4>
+          <p>A standard way to enforce uniqueness is by creating a unique index on the <code>code</code> column: </p>
+          <pre>
+                                    <code>CREATE TABLE `organizations` (
     `id` INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,
     `name` VARCHAR(255) NOT NULL,
     `code` VARCHAR(8) NOT NULL,
@@ -32,11 +26,12 @@
     `updated_at` TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
     UNIQUE INDEX `UK_organizations_code` (`code`)
-);</code></pre>
-    
-    <h2>Implementing a Soft Delete Mechanism</h2>
-    <p>To allow soft deletion, we introduce a <code>deleted_at</code> column, which stores the timestamp when a record is marked as deleted. If an organization is active, this column remains <code>NULL</code>.</p>
-    <pre><code>CREATE TABLE `organizations` (
+);</code>
+                                </pre>
+          <h4>Implementing a Soft Delete Mechanism</h4>
+          <p>To allow soft deletion, we introduce a <code>deleted_at</code> column, which stores the timestamp when a record is marked as deleted. If an organization is active, this column remains <code>NULL</code>. </p>
+          <pre>
+                                    <code>CREATE TABLE `organizations` (
     `id` INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,
     `name` VARCHAR(255) NOT NULL,
     `code` VARCHAR(8) NOT NULL,
@@ -45,14 +40,14 @@
     `deleted_at` TIMESTAMP NULL DEFAULT NULL,
     PRIMARY KEY (`id`),
     UNIQUE INDEX `UK_organizations_code` (`code`)
-);</code></pre>
-    
-    <h2>The Problem with Unique Constraints and Soft Deletion</h2>
-    <p>Suppose we insert an organization with <code>code = 'ORG1'</code>. Later, this organization is marked as deleted by setting <code>deleted_at</code> to a timestamp. If we then try to insert a new organization with the same <code>code</code>, the unique index constraint will prevent it.</p>
-    
-    <h2>Solution: Conditional Uniqueness</h2>
-    <p>We want to enforce uniqueness only for active (non-deleted) organizations. To achieve this, we modify the unique index to consider both <code>code</code> and <code>deleted_at</code>:</p>
-    <pre><code>CREATE TABLE `organizations` (
+);</code>
+                                </pre>
+          <h4>The Problem with Unique Constraints and Soft Deletion</h4>
+          <p>Suppose we insert an organization with <code>code = 'ORG1'</code>. Later, this organization is marked as deleted by setting <code>deleted_at</code> to a timestamp. If we then try to insert a new organization with the same <code>code</code>, the unique index constraint will prevent it. </p>
+          <h4>Solution: Conditional Uniqueness</h4>
+          <p>We want to enforce uniqueness only for active (non-deleted) organizations. To achieve this, we modify the unique index to consider both <code>code</code> and <code>deleted_at</code>: </p>
+          <pre>
+                                    <code>CREATE TABLE `organizations` (
     `id` INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,
     `name` VARCHAR(255) NOT NULL,
     `code` VARCHAR(8) NOT NULL,
@@ -61,53 +56,48 @@
     `deleted_at` TIMESTAMP NULL DEFAULT NULL,
     PRIMARY KEY (`id`),
     UNIQUE INDEX `UK_organizations_code` (`code`, `deleted_at`)
-);</code></pre>
-    
-    <h2>How This Works</h2>
-    <p>For active organizations, <code>deleted_at</code> is <code>NULL</code>, so the unique constraint ensures that only one active record exists per <code>code</code>.</p>
-    <p>When an organization is soft-deleted, <code>deleted_at</code> is set to a timestamp, making the <code>(code, deleted_at)</code> pair unique.</p>
-    <p>This allows a new organization with the same <code>code</code> to be inserted with <code>deleted_at = NULL</code>, since its <code>(code, NULL)</code> pair does not conflict with any existing record.</p>
-    
-    <h2>Example Scenario</h2>
-    <table>
-        <tr>
-            <th>id</th>
-            <th>name</th>
-            <th>code</th>
-            <th>deleted_at</th>
-        </tr>
-        <tr>
-            <td>1</td>
-            <td>Org A</td>
-            <td>ORG1</td>
-            <td>NULL</td>
-        </tr>
-        <tr>
-            <td>2</td>
-            <td>Org A (old)</td>
-            <td>ORG1</td>
-            <td>2024-01-01 10:00:00</td>
-        </tr>
-    </table>
-    
-    <p>This approach allows reusing organization codes after deletion while maintaining uniqueness among active records.</p>
-    
-        </div>
-        <a href="/notes.html">back</a>
+);</code>
+                                </pre>
+          <h4>How This Works</h4>
+          <p>For active organizations, <code>deleted_at</code> is <code>NULL</code>, so the unique constraint ensures that only one active record exists per <code>code</code>. </p>
+          <p>When an organization is soft-deleted, <code>deleted_at</code> is set to a timestamp, making the <code>(code, deleted_at)</code> pair unique. </p>
+          <p>This allows a new organization with the same <code>code</code> to be inserted with <code>deleted_at = NULL</code>, since its <code>(code, NULL)</code> pair does not conflict with any existing record. </p>
+          <h4>Example Scenario</h4>
+          <table>
+            <tr>
+              <th>id</th>
+              <th>name</th>
+              <th>code</th>
+              <th>deleted_at</th>
+            </tr>
+            <tr>
+              <td>1</td>
+              <td>Org A</td>
+              <td>ORG1</td>
+              <td>NULL</td>
+            </tr>
+            <tr>
+              <td>2</td>
+              <td>Org A (old)</td>
+              <td>ORG1</td>
+              <td>2024-01-01 10:00:00</td>
+            </tr>
+          </table>
+          <p>This approach allows reusing organization codes after deletion while maintaining uniqueness among active records.</p>
+      </div>
+      <a href="/notes.html">back</a>
     </div>
-    
     </main>
-</body>
+  </body>
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-RRYY7969JD"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
 
-<!-- Google tag (gtag.js) -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-RRYY7969JD"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
-
-  gtag('config', 'G-RRYY7969JD');
-</script>
-
-
+    function gtag() {
+      dataLayer.push(arguments);
+    }
+    gtag('js', new Date());
+    gtag('config', 'G-RRYY7969JD');
+  </script>
 </html>
