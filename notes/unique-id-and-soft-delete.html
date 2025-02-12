@@ -20,13 +20,11 @@
             <h2>Unique ID and soft delete.</h2>
             <h4>2020-03-21</h4>
         
-            <p>
-                Let's imagine that we have a table in the database containing organizations. We would like each organization to be uniquely identified by its code. Of course, we want this table to contain no duplicate organizations.
-            </p>
-            <p>
-                Sample SQL code creating such a table could look like this:
-                <pre>
-CREATE TABLE `organizations` (
+            <p>Let's consider a database table that stores organizations. Each organization should be uniquely identified by a <code>code</code>, and we want to ensure that no duplicate organizations exist.</p>
+    
+    <h2>Initial Table Structure</h2>
+    <p>A standard way to enforce uniqueness is by creating a unique index on the <code>code</code> column:</p>
+    <pre><code>CREATE TABLE `organizations` (
     `id` INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,
     `name` VARCHAR(255) NOT NULL,
     `code` VARCHAR(8) NOT NULL,
@@ -34,15 +32,11 @@ CREATE TABLE `organizations` (
     `updated_at` TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
     UNIQUE INDEX `UK_organizations_code` (`code`)
-);</pre>
-            </p>
-            <p>
-                Let's assume that we want to add to our table a soft delete mechanism. In order to do that, we create an additional column called `deleted_at` in which we will store the date and time when the record was deleted.
-            </p>
-            <p>
-                Our code will look like this:
-                <pre>
-CREATE TABLE `organizations` (
+);</code></pre>
+    
+    <h2>Implementing a Soft Delete Mechanism</h2>
+    <p>To allow soft deletion, we introduce a <code>deleted_at</code> column, which stores the timestamp when a record is marked as deleted. If an organization is active, this column remains <code>NULL</code>.</p>
+    <pre><code>CREATE TABLE `organizations` (
     `id` INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,
     `name` VARCHAR(255) NOT NULL,
     `code` VARCHAR(8) NOT NULL,
@@ -51,15 +45,14 @@ CREATE TABLE `organizations` (
     `deleted_at` TIMESTAMP NULL DEFAULT NULL,
     PRIMARY KEY (`id`),
     UNIQUE INDEX `UK_organizations_code` (`code`)
-);</pre>
-            </p>
-            <p>
-                It seems that this solution is correct. But imagine a situation in which our table contains organization identified by code 'ORG1'. At some point, it is removed from the database. So in the column `deleted_at` in the record we put the current timestamp. However, it turns out that after some time you need to add the organization that has the same code as the deleted record. If we created a unique index on the 'code' column (as in the example) then of course trying to add such an organization will result in an error because we will have a duplicate value for the column with the unique index.
-            </p>
-            <p>
-                So how to solve this problem? Note that we are interested in the uniqueness of organizations that are not removed. So let’s try slightly different way define a unique index for our table:
-<pre>
-CREATE TABLE `organizations` (
+);</code></pre>
+    
+    <h2>The Problem with Unique Constraints and Soft Deletion</h2>
+    <p>Suppose we insert an organization with <code>code = 'ORG1'</code>. Later, this organization is marked as deleted by setting <code>deleted_at</code> to a timestamp. If we then try to insert a new organization with the same <code>code</code>, the unique index constraint will prevent it.</p>
+    
+    <h2>Solution: Conditional Uniqueness</h2>
+    <p>We want to enforce uniqueness only for active (non-deleted) organizations. To achieve this, we modify the unique index to consider both <code>code</code> and <code>deleted_at</code>:</p>
+    <pre><code>CREATE TABLE `organizations` (
     `id` INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,
     `name` VARCHAR(255) NOT NULL,
     `code` VARCHAR(8) NOT NULL,
@@ -68,11 +61,37 @@ CREATE TABLE `organizations` (
     `deleted_at` TIMESTAMP NULL DEFAULT NULL,
     PRIMARY KEY (`id`),
     UNIQUE INDEX `UK_organizations_code` (`code`, `deleted_at`)
-);</pre>
-            </p>
-            <p>
-                This way, if we have a record that is not deleted in the deleted_at column, it will contain NULL. We will not be able to add another active organization with the same code because we have led to the situation in which we will try to add another pair with the same code and NULL value in the deleted_at column (['ORG1', NULL]). However, if the organization with code 'ORG1' was previously removed the unique index for this record would look like this ['ORG1', '2020-03-20 21:20:41']. This would allow us to add the organization with the code 'ORG1' once again (['ORG1', NULL]).
-            </p>
+);</code></pre>
+    
+    <h2>How This Works</h2>
+    <p>For active organizations, <code>deleted_at</code> is <code>NULL</code>, so the unique constraint ensures that only one active record exists per <code>code</code>.</p>
+    <p>When an organization is soft-deleted, <code>deleted_at</code> is set to a timestamp, making the <code>(code, deleted_at)</code> pair unique.</p>
+    <p>This allows a new organization with the same <code>code</code> to be inserted with <code>deleted_at = NULL</code>, since its <code>(code, NULL)</code> pair does not conflict with any existing record.</p>
+    
+    <h2>Example Scenario</h2>
+    <table>
+        <tr>
+            <th>id</th>
+            <th>name</th>
+            <th>code</th>
+            <th>deleted_at</th>
+        </tr>
+        <tr>
+            <td>1</td>
+            <td>Org A</td>
+            <td>ORG1</td>
+            <td>NULL</td>
+        </tr>
+        <tr>
+            <td>2</td>
+            <td>Org A (old)</td>
+            <td>ORG1</td>
+            <td>2024-01-01 10:00:00</td>
+        </tr>
+    </table>
+    
+    <p>This approach allows reusing organization codes after deletion while maintaining uniqueness among active records.</p>
+    
         </div>
         <a href="/notes.html">back</a>
     </div>
@@ -80,21 +99,15 @@ CREATE TABLE `organizations` (
     </main>
 </body>
 
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-RRYY7969JD"></script>
 <script>
-    (function (i, s, o, g, r, a, m) {
-        i['GoogleAnalyticsObject'] = r;
-        i[r] = i[r] || function () {
-            (i[r].q = i[r].q || []).push(arguments)
-        }, i[r].l = 1 * new Date();
-        a = s.createElement(o),
-            m = s.getElementsByTagName(o)[0];
-        a.async = 1;
-        a.src = g;
-        m.parentNode.insertBefore(a, m)
-    })(window, document, 'script', '//www.google-analytics.com/analytics.js', 'ga');
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
 
-    ga('create', 'UA-38453367-2', 'auto');
-    ga('send', 'pageview');
+  gtag('config', 'G-RRYY7969JD');
 </script>
+
 
 </html>
